@@ -4,6 +4,14 @@ Config.MaxQuantity = 25
 Config.WebhookConvar = 'rs_shops_webhook'
 Config.WebhookColor = 5763719
 
+-- Wanneer rs-businesses actief is, worden verkochte locaties hier automatisch
+-- uitgeschakeld. De afstand is ruim genoeg voor een bedrijfspunt bij de kassa.
+Config.BusinessIntegration = {
+    enabled = true,
+    resource = 'rs-businesses',
+    matchDistance = 30.0
+}
+
 Config.Shops = {
     convenience = {
         label = '24/7 Supermarkt',

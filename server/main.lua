@@ -12,14 +12,31 @@ local function getItem(shop, itemName)
     end
 end
 
-local function nearShop(source, shop)
+local function getLocation(shop, rawIndex)
+    local index = math.floor(tonumber(rawIndex) or 0)
+    return index > 0 and shop and shop.locations[index] or nil
+end
+
+local function nearLocation(source, location)
     local ped = GetPlayerPed(source)
     if ped == 0 then return false end
     local coords = GetEntityCoords(ped)
-    for index = 1, #shop.locations do
-        if #(coords - shop.locations[index]) <= Config.MaxDistance then return true end
-    end
-    return false
+    return location and #(coords - location) <= Config.MaxDistance
+end
+
+local function locationSold(location)
+    local integration = Config.BusinessIntegration
+    if not integration or not integration.enabled then return false end
+    if GetResourceState(integration.resource) ~= 'started' then return false end
+
+    local success, sold = pcall(function()
+        return exports[integration.resource]:IsLocationSold({
+            x = location.x,
+            y = location.y,
+            z = location.z
+        }, integration.matchDistance)
+    end)
+    return success and sold == true
 end
 
 local function notify(source, message, kind)
@@ -42,16 +59,18 @@ MySQL.ready(function()
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]])
 end)
 
-lib.callback.register('rs-shops:server:buy', function(source, shopId, itemName, rawQuantity, payment)
+lib.callback.register('rs-shops:server:buy', function(source, shopId, rawLocationIndex, itemName, rawQuantity, payment)
     local now = GetGameTimer()
     if cooldown[source] and now - cooldown[source] < 500 then return false, 'Wacht even.' end
     cooldown[source] = now
 
     local xPlayer = ESX.GetPlayerFromId(source)
     local shop = getShop(shopId)
+    local location = getLocation(shop, rawLocationIndex)
     local item = getItem(shop, itemName)
     local quantity = math.floor(tonumber(rawQuantity) or 0)
-    if not xPlayer or not shop or not item or not nearShop(source, shop) then return false, 'Aankoop geweigerd.' end
+    if not xPlayer or not shop or not location or not item or not nearLocation(source, location) then return false, 'Aankoop geweigerd.' end
+    if locationSold(location) then return false, 'Deze winkel is overgenomen door een speler.' end
     local maximum = math.min(Config.MaxQuantity, tonumber(item.max) or Config.MaxQuantity)
     if quantity < 1 or quantity > maximum or (payment ~= 'cash' and payment ~= 'bank') then return false, 'Ongeldig aantal of betaalmiddel.' end
     if not exports.ox_inventory:CanCarryItem(source, item.name, quantity) then return false, 'Je hebt onvoldoende ruimte.' end

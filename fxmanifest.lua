@@ -4,7 +4,7 @@ lua54 'yes'
 
 author 'Rico Scripts'
 description 'Server-authoritative ESX winkels voor ox_inventory'
-version '1.0.0'
+version '1.1.0'
 
 shared_scripts {
     '@ox_lib/init.lua',
